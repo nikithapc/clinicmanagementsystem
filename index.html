@@ -1,0 +1,222 @@
+CREATE DATABASE clinic_db;
+
+USE clinic_db;
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255)
+);
+
+CREATE TABLE appointments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    doctor_name VARCHAR(100),
+    appointment_date DATE,
+    reason TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);<?php
+$host = "localhost";
+$user = "root";
+$password = "";
+$dbname = "clinic_db";
+
+$conn = new mysqli($host, $user, $password, $dbname);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+?><!DOCTYPE html>
+<html>
+<head>
+    <title>Clinic Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <h1>Welcome to Clinic Management System</h1>
+    <a href="register.php">Register</a> |
+    <a href="login.php">Login</a>
+</body>
+</html><?php
+include('db/config.php');
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $name = $_POST['name'];
+    $email = $_POST['email'];
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+    $sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sss", $name, $email, $password);
+
+    if ($stmt->execute()) {
+        echo "Registered successfully! <a href='login.php'>Login here</a>";
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+}
+?>
+
+<form method="post">
+    <h2>Register</h2>
+    Name: <input type="text" name="name" required><br><br>
+    Email: <input type="email" name="email" required><br><br>
+    Password: <input type="password" name="password" required><br><br>
+    <input type="submit" value="Register">
+</form><?php
+include('db/config.php');
+session_start();
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+    $sql = "SELECT * FROM users WHERE email=?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user_id'] = $user['id'];
+        header("Location: dashboard.php");
+    } else {
+        echo "Invalid email or password.";
+    }
+}
+?>
+
+<form method="post">
+    <h2>Login</h2>
+    Email: <input type="email" name="email" required><br><br>
+    Password: <input type="password" name="password" required><br><br>
+    <input type="submit" value="Login">
+</form><?php
+include('db/config.php');
+session_start();
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+    $sql = "SELECT * FROM users WHERE email=?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user_id'] = $user['id'];
+        header("Location: dashboard.php");
+    } else {
+        echo "Invalid email or password.";
+    }
+}
+?>
+
+<form method="post">
+    <h2>Login</h2>
+    Email: <input type="email" name="email" required><br><br>
+    Password: <input type="password" name="password" required><br><br>
+    <input type="submit" value="Login">
+</form><?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+?>
+
+<h2>Welcome to the Dashboard</h2>
+<a href="book_appointment.php">Book Appointment</a> |
+<a href="view_appointments.php">My Appointments</a> |
+<a href="logout.php">Logout</a><?php
+session_start();
+include('db/config.php');
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $doctor = $_POST['doctor'];
+    $date = $_POST['date'];
+    $reason = $_POST['reason'];
+    $user_id = $_SESSION['user_id'];
+
+    $sql = "INSERT INTO appointments (user_id, doctor_name, appointment_date, reason) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("isss", $user_id, $doctor, $date, $reason);
+
+    if ($stmt->execute()) {
+        echo "Appointment booked!";
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+}
+?>
+
+<form method="post">
+    <h2>Book Appointment</h2>
+    Doctor:
+    <select name="doctor" required>
+        <option>Dr. Smith</option>
+        <option>Dr. John</option>
+        <option>Dr. Meera</option>
+    </select><br><br>
+    Date: <input type="date" name="date" required><br><br>
+    Reason: <textarea name="reason" required></textarea><br><br>
+    <input type="submit" value="Book">
+</form><?php
+session_start();
+include('db/config.php');
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+$sql = "SELECT * FROM appointments WHERE user_id=?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+echo "<h2>Your Appointments</h2>";
+while ($row = $result->fetch_assoc()) {
+    echo "Doctor: " . $row['doctor_name'] . "<br>";
+    echo "Date: " . $row['appointment_date'] . "<br>";
+    echo "Reason: " . $row['reason'] . "<br><hr>";
+}
+?>
+<a href="dashboard.php">Back to Dashboard</a><?php
+session_start();
+session_destroy();
+header("Location: login.php");
+exit;
+?>body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    padding: 20px;
+}
+
+form {
+    background: white;
+    padding: 20px;
+    max-width: 400px;
+    margin: auto;
+    border-radius: 5px;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+}
